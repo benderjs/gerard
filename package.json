@@ -1,0 +1,35 @@
+{
+	"name": "gerard",
+	"version": "0.1.0",
+	"description": "Graceful Recursive ReadDir",
+	"main": "index.js",
+	"scripts": {
+		"test": "jshint index.js test/test.js && mocha test -R list --check-leaks"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/benderjs/gerard.git"
+	},
+	"keywords": [
+		"graceful",
+		"recursive",
+		"readdir",
+		"read",
+		"directory",
+		"fs"
+	],
+	"author": "CKSource (http://cksource.com/)",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/benderjs/gerard/issues"
+	},
+	"dependencies": {
+		"graceful-fs": "~3.0.2",
+		"minimatch": "~0.3.0"
+	},
+	"devDependencies": {
+		"mocha": "~1.20.1",
+		"chai": "~1.9.1",
+		"jshint": "~2.5.2"
+	}
+}
