@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/benderjs/gerard.svg?branch=master)](https://travis-ci.org/benderjs/gerard)
+
 Gerard - Graceful Recursive ReadDir
 ===================================
 
@@ -35,8 +37,8 @@ gerard('path/to/directory/', function (err, results) {
     if (err) {
         console.error('Error:', err);
     }
-    
-    console.log(results);    
+
+    console.log(results);
     // ['foo.js', 'bar.html', 'baz.css']
 });
 ```
@@ -48,7 +50,7 @@ gerard('path/to/directory/', { ignore: '**/*.js' }, function (err, results) {
     if (err) {
         console.error('Error:', err);
     }
-    
+
     console.log(results);
     // ['bar.html', 'baz.css']
 });
@@ -61,7 +63,7 @@ gerard('path/to/directory/', { stats: true }, function (err, results) {
     if (err) {
         console.error('Error:', err);
     }
-    
+
     console.log(results);
     // [ { name: 'foo.js', dir: 'path/to/directory/', path: 'path/to/directory/foo.js', stats: {...} },
     // { name: 'bar.html', dir: 'path/to/directory/', path: 'path/to/directory/bar.html', stats: {...} }
