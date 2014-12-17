@@ -4,7 +4,8 @@
 	"description": "Graceful Recursive ReadDir",
 	"main": "index.js",
 	"scripts": {
-		"test": "jshint index.js test/test.js && mocha test -R list --check-leaks"
+		"lint": "jscs . && jshint index.js test/test.js",
+		"test": "mocha test -R list --check-leaks"
 	},
 	"repository": {
 		"type": "git",
@@ -28,8 +29,9 @@
 		"minimatch": "~0.3.0"
 	},
 	"devDependencies": {
-		"mocha": "~1.20.1",
 		"chai": "~1.9.1",
-		"jshint": "~2.5.2"
+		"jscs": "^1.8.1",
+		"jshint": "~2.5.2",
+		"mocha": "~1.20.1"
 	}
 }
