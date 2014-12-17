@@ -11,20 +11,27 @@ var minimatch = require( 'minimatch' ),
 
 /**
  * Reads directory recursively
- * @param  {String}   dir               Directory to be read
- * @param  {Object}   [options]         Configuration options
- * @param  {String}   [options.ignore]  Ignore file pattern, supports globstar matching
- * @param  {Boolean}  [options.stats]   Return file objects containing file statistics
- * @param  {Function} callback          Function called when done or error occured
+ * @param  {String}   dir                     Directory to be read
+ * @param  {Object}   [options]               Configuration options
+ * @param  {String}   [options.ignore]        Ignore file pattern, supports globstar matching
+ * @param  {Boolean}  [options.stats]         Return file objects containing file statistics
+ * @param  {Boolean}  [options.stopOnErrors]  Stop reading the directory on first error
+ * @param  {Function} callback                Function called when done or error occured
  */
 function gerard( dir, options, callback ) {
 	var results = [],
 		count = 0;
 
+	if ( arguments.length < 2 ) {
+		return callback( new Error( 'Invalid number arguments for Gerard specified.' ) );
+	}
+
 	if ( typeof options == 'function' ) {
 		callback = options;
 		options = {};
 	}
+
+	options.stopOnErrors = ( options.stopOnErrors === undefined ) ? true : options.stopOnErrors;
 
 	function decreaseCounter() {
 		count--;
@@ -35,11 +42,11 @@ function gerard( dir, options, callback ) {
 	}
 
 	fs.readdir( dir, function( err, files ) {
-		if ( err ) {
+		if ( err && options.stopOnErrors ) {
 			return callback( err );
 		}
 
-		if ( !( count = files.length ) ) {
+		if ( !files || !( count = files.length ) ) {
 			return callback( null, results );
 		}
 
@@ -53,17 +60,23 @@ function gerard( dir, options, callback ) {
 			}
 
 			fs.lstat( file, function( err, stats ) {
-				if ( err ) {
+				if ( err && options.stopOnErrors ) {
 					return callback( err );
+				}
+
+				if ( err ) {
+					return decreaseCounter();
 				}
 
 				if ( stats.isDirectory() ) {
 					gerard( file, options, function( err, files ) {
-						if ( err ) {
+						if ( err && options.stopOnErrors ) {
 							return callback( err );
 						}
 
-						results = results.concat( files );
+						if ( !err ) {
+							results = results.concat( files );
+						}
 
 						decreaseCounter();
 					} );
