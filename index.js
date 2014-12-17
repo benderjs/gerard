@@ -52,7 +52,7 @@ function gerard( dir, options, callback ) {
 				return decreaseCounter();
 			}
 
-			fs.stat( file, function( err, stats ) {
+			fs.lstat( file, function( err, stats ) {
 				if ( err ) {
 					return callback( err );
 				}
