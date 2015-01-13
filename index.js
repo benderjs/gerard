@@ -66,58 +66,96 @@ function readPattern( dir, options, callback ) {
 		count--;
 
 		if ( !count ) {
-			callback( null, results );
+			callback( null, results.sort() );
 		}
 	}
 
 	function readPart() {
-		var part = parts.shift();
+		var part = parts.shift(),
+			opt;
 
 		if ( !part ) {
-			return callback( null, results );
+			return callback( null, results.sort() );
 		}
 
-		console.log( 'read part', part );
-
-		if ( isPattern( part ) ) {
-			if ( part === '**' ) {
-				if ( parts.length ) {
-					// TODO globstar in the middle, what now? (-_-;)
-				} else {
-					count = paths.length;
-
-					paths.forEach( function( pth ) {
-						readDir( pth, options, checkDone );
-					} );
+		if ( isPattern( part ) && part === '**' ) {
+			if ( parts.length ) {
+				if ( !paths.length ) {
+					paths.push( '.' );
 				}
+				// TODO globstar in the middle, what now? (-_-;)
+				opt = clone( options );
+				opt.filter = dir;
+
+				readAndFilterFiles( paths, opt, callback );
 			} else {
-				// wildcard in the middle of a path - update the paths list
-				if ( parts.length ) {
-					updatePaths( paths, part, function( result ) {
-						paths = result;
-						readPart();
-					} );
-					// wildcard at the end of a path
-				} else {
-					readAndFilterPaths( paths, part, function( result ) {
-						results = result;
-						readPart();
-					} );
+				count = paths.length;
+
+				paths.forEach( function( pth ) {
+					readDir( pth, options, checkDone );
+				} );
+			}
+		} else if ( isPattern( part ) ) {
+			// wildcard in the middle of a path - update the paths list
+			if ( parts.length ) {
+				// add the CWD if the path starts with a wildcard
+				if ( !paths.length ) {
+					paths.push( '.' );
 				}
+
+				opt = clone( options );
+				opt.filter = part;
+
+				updatePaths( paths, opt, function( err, result ) {
+					if ( err && options.stopOnErrors ) {
+						return callback( err );
+					}
+
+					paths = result;
+					readPart();
+				} );
+				// wildcard at the end of a path
+			} else {
+				opt = clone( options );
+				opt.filter = part;
+
+				readAndFilterPaths( paths, opt, function( err, result ) {
+					if ( err && options.stopOnErrors ) {
+						return callback( err );
+					}
+
+					results = result;
+					readPart();
+				} );
 			}
 		} else {
 			// add current part to the paths
 			if ( parts.length ) {
 				if ( paths.length ) {
-					paths.forEach( function( pth, i ) {
-						paths[ i ] = path.join( pth, part );
+					opt = clone( options );
+					opt.filter = part;
+
+					updatePaths( paths, opt, function( err, result ) {
+						if ( err && options.stopOnErrors ) {
+							return callback( err );
+						}
+
+						paths = result;
+						readPart();
 					} );
 				} else {
 					paths.push( part );
+					readPart();
 				}
-				readPart();
 			} else {
-				readAndFilterPaths( paths, part, function( result ) {
+				opt = clone( options );
+				opt.filter = part;
+
+				readAndFilterPaths( paths, opt, function( err, result ) {
+					if ( err && options.stopOnErrors ) {
+						return callback( err );
+					}
+
 					results = result;
 					readPart();
 				} );
@@ -126,127 +164,13 @@ function readPattern( dir, options, callback ) {
 	}
 
 	readPart();
-
-	function updatePaths( paths, pattern, done ) {
-		var count = 0,
-			result = [];
-
-		function checkDone() {
-			count--;
-
-			if ( !count ) {
-				done( result );
-			}
-		}
-
-		paths.forEach( function( pth ) {
-			fs.readdir( pth, function( err, files ) {
-				if ( err && options.stopOnErrors ) {
-					return callback( err );
-				}
-
-				if ( err ) {
-					return;
-				}
-
-				count = files.length;
-
-				files.forEach( function( file ) {
-					var name = file;
-
-					file = path.join( pth, file );
-
-					if (
-						options.ignore &&
-						( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
-						( options.ignore instanceof RegExp && options.ignore.test( file ) )
-					) {
-						return checkDone();
-					}
-
-					fs.stat( file, function( err, stats ) {
-						if ( err && options.stopOnErrors ) {
-							return callback( err );
-						}
-
-						if ( err ) {
-							return;
-						}
-
-						if ( stats.isDirectory() && minimatch( name, pattern ) ) {
-							result.push( file );
-						}
-
-						checkDone();
-					} );
-				} );
-			} );
-		} );
-	}
-
-	function readAndFilterPaths( paths, pattern, done ) {
-		var count = 0,
-			result = [];
-
-
-		function checkDone() {
-			count--;
-
-			if ( !count ) {
-				done( result );
-			}
-		}
-
-		paths.forEach( function( pth ) {
-			fs.readdir( pth, function( err, files ) {
-				if ( err && options.stopOnErrors ) {
-					return callback( err );
-				}
-
-				if ( err ) {
-					return;
-				}
-
-				count = files.length;
-
-				files.forEach( function( file ) {
-					var name = file;
-
-					file = path.join( pth, file );
-
-					if (
-						options.ignore &&
-						( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
-						( options.ignore instanceof RegExp && options.ignore.test( file ) )
-					) {
-						return checkDone();
-					}
-
-					fs.stat( file, function( err, stats ) {
-						if ( err && options.stopOnErrors ) {
-							return callback( err );
-						}
-
-						if ( err ) {
-							return;
-						}
-
-						if ( minimatch( name, pattern ) ) {
-							result.push( file );
-						}
-
-						checkDone();
-					} );
-				} );
-			} );
-		} );
-	}
 }
 
-function readDir( dir, options, callback ) {
-	console.log( 'read dir', dir );
-	var results = [],
-		count = 0;
+function updatePaths( paths, options, callback ) {
+	var count = paths.length,
+		results = [];
+
+	paths.forEach( updatePath );
 
 	function decreaseCounter() {
 		count--;
@@ -256,13 +180,171 @@ function readDir( dir, options, callback ) {
 		}
 	}
 
+	function updatePath( dir ) {
+		var count = 0;
+
+		function checkDone() {
+			count--;
+
+			if ( !count ) {
+				decreaseCounter();
+			}
+		}
+
+		fs.readdir( dir, function( err, files ) {
+			if ( err && options.stopOnErrors ) {
+				return callback( err );
+			}
+
+			if ( !files || !( count = files.length ) ) {
+				return callback( null, results );
+			}
+
+			files.forEach( function( file ) {
+				var name = file;
+
+				file = path.join( dir, file );
+
+				if (
+					( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
+					( options.ignore instanceof RegExp && options.ignore.test( file ) ) ||
+					( options.filter && !minimatch( name, options.filter ) )
+				) {
+					return checkDone();
+				}
+
+				fs.stat( file, function( err, stats ) {
+					if ( err && options.stopOnErrors ) {
+						return callback( err );
+					}
+
+					if ( !err && stats.isDirectory() ) {
+						results.push( file );
+					}
+
+					checkDone();
+				} );
+			} );
+		} );
+	}
+}
+
+function readAndFilterPaths( paths, options, callback ) {
+	var count = paths.length,
+		results = [];
+
+	paths.forEach( readAndFilterPath );
+
+	function decreaseCounter() {
+		count--;
+
+		if ( !count ) {
+			callback( null, results );
+		}
+	}
+
+	function readAndFilterPath( dir ) {
+		var count = 0;
+
+		function checkDone() {
+			count--;
+
+			if ( !count ) {
+				decreaseCounter();
+			}
+		}
+
+		fs.readdir( dir, function( err, files ) {
+			if ( err && options.stopOnErrors ) {
+				return callback( err );
+			}
+
+			if ( !files || !( count = files.length ) ) {
+				return callback( null, results );
+			}
+
+			files.forEach( function( file ) {
+				var name = file;
+
+				file = path.join( dir, file );
+
+				if (
+					( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
+					( options.ignore instanceof RegExp && options.ignore.test( file ) ) ||
+					( options.filter && !minimatch( name, options.filter ) )
+				) {
+					return checkDone();
+				}
+
+				fs.stat( file, function( err, stats ) {
+					if ( err && options.stopOnErrors ) {
+						return callback( err );
+					}
+
+					if ( !err ) {
+						results.push( file );
+					}
+
+					checkDone();
+				} );
+			} );
+		} );
+	}
+}
+
+function readAndFilterFiles( paths, options, callback ) {
+	var count = paths.length,
+		results = [],
+		opt = clone( options );
+
+	delete opt.filter;
+
+	paths.forEach( readAndFilterDirectory );
+
+	function decreaseCounter( err, result ) {
+		if ( err && options.stopOnErrors ) {
+			return callback( err );
+		}
+
+		if ( !err ) {
+			results = results.concat( result );
+		}
+
+		count--;
+
+		if ( !count ) {
+			results = results.filter( function( file ) {
+				return minimatch( file, options.filter );
+			} );
+
+			callback( null, results.sort() );
+		}
+	}
+
+	function readAndFilterDirectory( dir ) {
+		readDir( dir, opt, decreaseCounter );
+	}
+}
+
+function readDir( dir, options, callback ) {
+	var results = [],
+		count = 0;
+
+	function decreaseCounter() {
+		count--;
+
+		if ( !count ) {
+			callback( null, results.sort() );
+		}
+	}
+
 	fs.readdir( dir, function( err, files ) {
 		if ( err && options.stopOnErrors ) {
 			return callback( err );
 		}
 
 		if ( !files || !( count = files.length ) ) {
-			return callback( null, results );
+			return callback( null, results.sort() );
 		}
 
 		files.forEach( function( file ) {
@@ -270,13 +352,12 @@ function readDir( dir, options, callback ) {
 
 			file = path.join( dir, file );
 
-			// apply ignore filter
+
 			if (
-				options.ignore &&
 				( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
-				( options.ignore instanceof RegExp && options.ignore.test( file ) )
+				( options.ignore instanceof RegExp && options.ignore.test( file ) ) ||
+				( options.filter && !minimatch( name, options.filter ) )
 			) {
-				console.log( 'ignore', file );
 				return decreaseCounter();
 			}
 
@@ -290,7 +371,7 @@ function readDir( dir, options, callback ) {
 				}
 
 				if ( stats.isDirectory() ) {
-					gerard( file, options, function( err, files ) {
+					readDir( file, options, function( err, files ) {
 						if ( err && options.stopOnErrors ) {
 							return callback( err );
 						}
@@ -323,4 +404,25 @@ function readDir( dir, options, callback ) {
 // check if the given string is a pattern
 function isPattern( str ) {
 	return str.indexOf( '*' ) > -1;
+}
+
+// returns a copy of the given argument
+function clone( obj ) {
+	var copy;
+
+	if ( Array.isArray( obj ) ) {
+		copy = obj.map( function( value ) {
+			return clone( value );
+		} );
+	} else if ( typeof obj == 'object' && obj !== null ) {
+		copy = {};
+
+		Object.getOwnPropertyNames( obj ).forEach( function( name ) {
+			copy[ name ] = clone( obj[ name ] );
+		} );
+	} else {
+		copy = obj;
+	}
+
+	return copy;
 }

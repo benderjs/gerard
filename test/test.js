@@ -13,104 +13,213 @@ var expect = require( 'chai' ).expect,
 	path = require( 'path' ),
 	gerard = require( '../' );
 
+function normalize( arg ) {
+	if ( Array.isArray( arg ) ) {
+		return arg.map( normalize ).sort();
+	} else if ( typeof arg == 'string' ) {
+		return path.normalize( arg );
+	} else {
+		return arg;
+	}
+}
+
 describe( 'Gerard', function() {
 	var dir1 = path.normalize( 'test/dir1' ),
 		testDir = path.normalize( 'test/' ),
 		invalid = path.normalize( 'invalid/path' );
 
-	// it( 'should pass an error if invalid path was given', function( done ) {
-	// 	gerard( invalid, function( err, results ) {
-	// 		expect( err ).to.exist;
-	// 		expect( results ).to.not.exist;
+	describe( 'with a directory', function() {
+		it( 'should pass an error if invalid path was given', function( done ) {
+			gerard( invalid, function( err, results ) {
+				expect( err ).to.exist;
+				expect( err.code ).to.equal( 'ENOENT' );
+				expect( results ).to.not.exist;
 
-	// 		done();
-	// 	} );
-	// } );
+				done();
+			} );
+		} );
 
-	// it( 'should list all the files in the directory', function( done ) {
-	// 	gerard( dir1, function( err, results ) {
-	// 		expect( err ).to.not.exist;
-	// 		expect( results ).to.be.an( 'array' );
-	// 		expect( results ).to.have.length( 10 );
+		it( 'should list all the files in the directory', function( done ) {
+			var expected = [
+				'test/dir1/a.js',
+				'test/dir1/b.js',
+				'test/dir1/dir3/c.js',
+				'test/dir1/dir3/d.js',
+				'test/dir1/dir3/dir2/dir4/h.js',
+				'test/dir1/dir3/dir2/e.js',
+				'test/dir1/dir3/dir2/f.js',
+				'test/dir1/dir3/dir2/g.js',
+				'test/dir1/dir3/test.txt',
+				'test/dir1/test.txt'
+			];
 
-	// 		done();
-	// 	} );
-	// } );
+			gerard( dir1, function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
 
-	// it( 'should handle "ignore" option', function( done ) {
-	// 	gerard( dir1, {
-	// 		ignore: '**/*.js'
-	// 	}, function( err, results ) {
-	// 		expect( err ).to.not.exist;
-	// 		expect( results ).to.be.an( 'array' );
-	// 		expect( results ).to.have.length( 2 );
+				done();
+			} );
+		} );
 
-	// 		done();
-	// 	} );
-	// } );
+		it( 'should handle "ignore" option', function( done ) {
+			var expected = [
+				'test/dir1/dir3/test.txt',
+				'test/dir1/test.txt',
+				'test/dir2/dir3/test.txt',
+				'test/dir2/test.txt',
+				'test/dir3/test.txt'
+			];
 
-	// it( 'should handle "stats" option', function( done ) {
-	// 	gerard( dir1, {
-	// 		stats: true
-	// 	}, function( err, results ) {
-	// 		expect( err ).to.not.exist;
-	// 		expect( results ).to.be.an( 'array' );
-	// 		expect( results ).to.have.length( 10 );
+			gerard( testDir, {
+				ignore: '**/*.js'
+			}, function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
 
-	// 		results.forEach( function( result ) {
-	// 			expect( result ).to.be.an( 'object' );
-	// 			expect( result ).to.contain.keys( [ 'name', 'dir', 'path', 'stats' ] );
-	// 		} );
+				done();
+			} );
+		} );
 
-	// 		done();
-	// 	} );
-	// } );
+		it( 'should handle "stats" option', function( done ) {
+			gerard( dir1, {
+				stats: true
+			}, function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( results ).to.have.length( 10 );
 
-	it( 'test', function( done ) {
-		gerard( 'test/dir2', function( err, results ) {
-			if ( err ) {
-				console.error( 'err', err );
-			}
+				results.forEach( function( result ) {
+					expect( result ).to.be.an( 'object' );
+					expect( result ).to.contain.keys( [ 'name', 'dir', 'path', 'stats' ] );
+				} );
 
-			console.log( 'results', results.length, results );
-
-			done();
+				done();
+			} );
 		} );
 	} );
 
-	it( 'should handle a pattern ending with a globstar', function( done ) {
-		gerard( 'test/dir2/**', function( err, results ) {
-			if ( err ) {
-				console.error( 'err', err );
-			}
+	describe( 'with a pattern', function() {
+		it( 'should handle test/dir1/**', function( done ) {
+			var expected = [
+				'test/dir1/a.js',
+				'test/dir1/b.js',
+				'test/dir1/test.txt',
+				'test/dir1/dir3/c.js',
+				'test/dir1/dir3/d.js',
+				'test/dir1/dir3/test.txt',
+				'test/dir1/dir3/dir2/f.js',
+				'test/dir1/dir3/dir2/e.js',
+				'test/dir1/dir3/dir2/g.js',
+				'test/dir1/dir3/dir2/dir4/h.js'
+			];
 
-			console.log( 'results', results.length, results );
+			gerard( 'test/dir1/**', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
 
-			done();
+				done();
+			} );
+		} );
+
+		it( 'should handle test/**/test.txt', function( done ) {
+			var expected = [
+				'test/dir1/test.txt',
+				'test/dir1/dir3/test.txt',
+				'test/dir2/test.txt',
+				'test/dir2/dir3/test.txt',
+				'test/dir3/test.txt'
+			];
+
+			gerard( 'test/**/test.txt', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
+		it( 'should handle test/**/*.js', function( done ) {
+			var expected = [
+				'test/dir1/a.js',
+				'test/dir1/b.js',
+				'test/dir1/dir3/c.js',
+				'test/dir1/dir3/d.js',
+				'test/dir1/dir3/dir2/dir4/h.js',
+				'test/dir1/dir3/dir2/e.js',
+				'test/dir1/dir3/dir2/f.js',
+				'test/dir1/dir3/dir2/g.js',
+				'test/dir2/a.js',
+				'test/dir2/b.js',
+				'test/dir2/dir3/c.js',
+				'test/dir2/dir3/d.js',
+				'test/dir2/dir3/dir2/dir4/h.js',
+				'test/dir2/dir3/dir2/e.js',
+				'test/dir2/dir3/dir2/f.js',
+				'test/dir2/dir3/dir2/g.js',
+				'test/dir3/c.js',
+				'test/dir3/d.js',
+				'test/dir3/dir2/dir4/h.js',
+				'test/dir3/dir2/e.js',
+				'test/dir3/dir2/f.js',
+				'test/dir3/dir2/g.js',
+				'test/test.js'
+			];
+
+			gerard( 'test/**/*.js', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
+		it( 'should handle test/dir2/*/*.js', function( done ) {
+			var expected = [
+				'test/dir2/dir3/c.js',
+				'test/dir2/dir3/d.js'
+			];
+
+			gerard( 'test/dir2/*/*.js', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
+		it( 'should handle a pattern test/*/dir3/*.js', function( done ) {
+			var expected = [
+				'test/dir1/dir3/c.js',
+				'test/dir1/dir3/d.js',
+				'test/dir2/dir3/c.js',
+				'test/dir2/dir3/d.js'
+			];
+
+			gerard( 'test/*/dir3/*.js', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
+		it( 'should handle a pattern */*.js', function( done ) {
+			var expected = [ 'test/test.js' ];
+
+			gerard( '*/*.js', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
 		} );
 	} );
-
-	// it( 'should handle a pattern ending with a name', function( done ) {
-	// 	gerard( 'test/dir2/*/test.txt', function( err, results ) {
-	// 		if ( err ) {
-	// 			console.error( 'err', err );
-	// 		}
-
-	// 		console.log( 'results', results.length, results );
-
-	// 		done();
-	// 	} );
-	// } );
-
-	// it( 'should handle a pattern', function( done ) {
-	// 	gerard( 'test/dir2/*/*.js', function( err, results ) {
-	// 		if ( err ) {
-	// 			console.error( 'err', err );
-	// 		}
-
-	// 		console.log( 'results', results );
-
-	// 		done();
-	// 	} );
-	// } );
 } );
