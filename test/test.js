@@ -78,7 +78,7 @@ describe( 'Gerard', function() {
 		} );
 	} );
 
-	it( 'should handle a pattern passed as a path ending with a globstar', function( done ) {
+	it( 'should handle a pattern ending with a globstar', function( done ) {
 		gerard( 'test/dir2/**', function( err, results ) {
 			if ( err ) {
 				console.error( 'err', err );
@@ -90,7 +90,19 @@ describe( 'Gerard', function() {
 		} );
 	} );
 
-	// it( 'should handle a pattern passed as a path', function( done ) {
+	// it( 'should handle a pattern ending with a name', function( done ) {
+	// 	gerard( 'test/dir2/*/test.txt', function( err, results ) {
+	// 		if ( err ) {
+	// 			console.error( 'err', err );
+	// 		}
+
+	// 		console.log( 'results', results.length, results );
+
+	// 		done();
+	// 	} );
+	// } );
+
+	// it( 'should handle a pattern', function( done ) {
 	// 	gerard( 'test/dir2/*/*.js', function( err, results ) {
 	// 		if ( err ) {
 	// 			console.error( 'err', err );

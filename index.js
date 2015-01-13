@@ -55,8 +55,6 @@ function readPattern( dir, options, callback ) {
 		count = 0;
 
 	function checkDone( err, files ) {
-		count--;
-
 		if ( err && options.stopOnErrors ) {
 			return callback( err );
 		}
@@ -64,6 +62,8 @@ function readPattern( dir, options, callback ) {
 		if ( !err ) {
 			results = results.concat( files );
 		}
+
+		count--;
 
 		if ( !count ) {
 			callback( null, results );
@@ -86,10 +86,8 @@ function readPattern( dir, options, callback ) {
 				} else {
 					count = paths.length;
 
-					console.log( paths );
-
 					paths.forEach( function( pth ) {
-						readDir( pth, checkDone );
+						readDir( pth, options, checkDone );
 					} );
 				}
 			} else {
@@ -117,11 +115,13 @@ function readPattern( dir, options, callback ) {
 				} else {
 					paths.push( part );
 				}
+				readPart();
 			} else {
-
+				readAndFilterPaths( paths, part, function( result ) {
+					results = result;
+					readPart();
+				} );
 			}
-
-			readPart();
 		}
 	}
 
