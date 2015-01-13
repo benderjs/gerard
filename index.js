@@ -71,42 +71,40 @@ function readPattern( dir, options, callback ) {
 	}
 
 	function readPart() {
-		var part = parts.shift(),
-			opt;
+		var part = parts.shift();
 
 		if ( !part ) {
 			return callback( null, results.sort() );
 		}
 
-		if ( isPattern( part ) && part === '**' ) {
-			if ( parts.length ) {
-				if ( !paths.length ) {
-					paths.push( '.' );
-				}
-				// TODO globstar in the middle, what now? (-_-;)
-				opt = clone( options );
-				opt.filter = dir;
+		// cloned options for further modifications
+		var opt = clone( options );
+		opt.filter = part;
 
-				readAndFilterFiles( paths, opt, callback );
-			} else {
-				count = paths.length;
+		// add the CWD if the path starts with a pattern
+		if ( isPattern( part ) && !paths.length ) {
+			paths.push( '.' );
+		}
 
-				paths.forEach( function( pth ) {
-					readDir( pth, options, checkDone );
-				} );
-			}
-		} else if ( isPattern( part ) ) {
-			// wildcard in the middle of a path - update the paths list
-			if ( parts.length ) {
-				// add the CWD if the path starts with a wildcard
-				if ( !paths.length ) {
-					paths.push( '.' );
+		// globstar
+		if ( part === '**' ) {
+			opt.filter = dir;
+
+			readAndFilterFiles( paths, opt, callback );
+			// pattern in the middle of the path
+		} else if ( isPattern( part ) && parts.length ) {
+			filterPaths( paths, opt, function( err, result ) {
+				if ( err && options.stopOnErrors ) {
+					return callback( err );
 				}
 
-				opt = clone( options );
-				opt.filter = part;
-
-				updatePaths( paths, opt, function( err, result ) {
+				paths = result;
+				readPart();
+			} );
+			// in the middle of the path
+		} else if ( parts.length ) {
+			if ( paths.length ) {
+				filterPaths( paths, opt, function( err, result ) {
 					if ( err && options.stopOnErrors ) {
 						return callback( err );
 					}
@@ -114,59 +112,29 @@ function readPattern( dir, options, callback ) {
 					paths = result;
 					readPart();
 				} );
-				// wildcard at the end of a path
 			} else {
-				opt = clone( options );
-				opt.filter = part;
-
-				readAndFilterPaths( paths, opt, function( err, result ) {
-					if ( err && options.stopOnErrors ) {
-						return callback( err );
-					}
-
-					results = result;
-					readPart();
-				} );
+				paths.push( part );
+				readPart();
 			}
+			// at the end of the path
 		} else {
-			// add current part to the paths
-			if ( parts.length ) {
-				if ( paths.length ) {
-					opt = clone( options );
-					opt.filter = part;
-
-					updatePaths( paths, opt, function( err, result ) {
-						if ( err && options.stopOnErrors ) {
-							return callback( err );
-						}
-
-						paths = result;
-						readPart();
-					} );
-				} else {
-					paths.push( part );
-					readPart();
+			readAndFilterPaths( paths, opt, function( err, result ) {
+				if ( err && options.stopOnErrors ) {
+					return callback( err );
 				}
-			} else {
-				opt = clone( options );
-				opt.filter = part;
 
-				readAndFilterPaths( paths, opt, function( err, result ) {
-					if ( err && options.stopOnErrors ) {
-						return callback( err );
-					}
-
-					results = result;
-					readPart();
-				} );
-			}
+				results = result;
+				readPart();
+			} );
 		}
 	}
 
 	readPart();
 }
 
-function updatePaths( paths, options, callback ) {
+// TODO dedupe all the stuff below
+
+function filterPaths( paths, options, callback ) {
 	var count = paths.length,
 		results = [];
 
@@ -292,6 +260,7 @@ function readAndFilterPaths( paths, options, callback ) {
 	}
 }
 
+// recursively read given paths
 function readAndFilterFiles( paths, options, callback ) {
 	var count = paths.length,
 		results = [],
@@ -313,9 +282,11 @@ function readAndFilterFiles( paths, options, callback ) {
 		count--;
 
 		if ( !count ) {
-			results = results.filter( function( file ) {
-				return minimatch( file, options.filter );
-			} );
+			if ( options.filter ) {
+				results = results.filter( function( file ) {
+					return minimatch( file, options.filter );
+				} );
+			}
 
 			callback( null, results.sort() );
 		}
@@ -326,6 +297,7 @@ function readAndFilterFiles( paths, options, callback ) {
 	}
 }
 
+// recursively read a given directory
 function readDir( dir, options, callback ) {
 	var results = [],
 		count = 0;

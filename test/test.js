@@ -210,6 +210,21 @@ describe( 'Gerard', function() {
 			} );
 		} );
 
+		it( 'should handle a pattern test/*/dir3/test.txt', function( done ) {
+			var expected = [
+				'test/dir1/dir3/test.txt',
+				'test/dir2/dir3/test.txt'
+			];
+
+			gerard( 'test/*/dir3/test.txt', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
 		it( 'should handle a pattern */*.js', function( done ) {
 			var expected = [ 'test/test.js' ];
 
