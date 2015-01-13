@@ -11,14 +11,14 @@ var minimatch = require( 'minimatch' ),
 
 /**
  * Reads directory recursively
- * @param  {String}        dir                     Directory to be read
+ * @param  {String}        path                    Path to a directory to be read or a pattern
  * @param  {Object}        [options]               Configuration options
  * @param  {String|RegExp} [options.ignore]        Ignore file pattern, supports globstar matching
  * @param  {Boolean}       [options.stats]         Return file objects containing file statistics
  * @param  {Boolean}       [options.stopOnErrors]  Stop reading the directory on first error
  * @param  {Function}      callback                Function called when done or error occured
  */
-function gerard( dir, options, callback ) {
+function gerard( path, options, callback ) {
 	// invalid argument count
 	if ( arguments.length < 2 ) {
 		return callback( new Error( 'Invalid number arguments for Gerard specified.' ) );
@@ -32,22 +32,26 @@ function gerard( dir, options, callback ) {
 
 	// set the stopOnErrors option to default if no value specified
 	options.stopOnErrors = ( options.stopOnErrors === undefined ) ? true : options.stopOnErrors;
+	options.recursive = ( options.recursive === undefined ) ? true : options.recursive;
 
 	// invalid argument type
-	if ( typeof dir != 'string' || typeof callback != 'function' ) {
+	if ( typeof path != 'string' || typeof callback != 'function' ) {
 		return callback( new Error( 'Invalid type of a path for Gerard specified.' ) );
 	}
 
-	// the given directory path contains patterns
-	if ( isPattern( dir ) ) {
-		readPattern( dir, options, callback );
+	// the given path is a pattern
+	if ( isPattern( path ) ) {
+		readPattern( path, options, callback );
 	} else {
-		readDir( dir, options, callback );
+		readDir( path, options, callback );
 	}
 }
 
 module.exports = gerard;
 
+//
+// private stuff
+//
 function readPattern( dir, options, callback ) {
 	var parts = path.normalize( dir ).split( path.sep ),
 		results = [],
@@ -92,8 +96,9 @@ function readPattern( dir, options, callback ) {
 
 			readAndFilterFiles( paths, opt, callback );
 			// pattern in the middle of the path
-		} else if ( isPattern( part ) && parts.length ) {
-			filterPaths( paths, opt, function( err, result ) {
+		} else if ( parts.length && ( isPattern( part ) || paths.length ) ) {
+			opt.dirOnly = true;
+			readAndFilterPaths( paths, opt, function( err, result ) {
 				if ( err && options.stopOnErrors ) {
 					return callback( err );
 				}
@@ -103,19 +108,8 @@ function readPattern( dir, options, callback ) {
 			} );
 			// in the middle of the path
 		} else if ( parts.length ) {
-			if ( paths.length ) {
-				filterPaths( paths, opt, function( err, result ) {
-					if ( err && options.stopOnErrors ) {
-						return callback( err );
-					}
-
-					paths = result;
-					readPart();
-				} );
-			} else {
-				paths.push( part );
-				readPart();
-			}
+			paths.push( part );
+			readPart();
 			// at the end of the path
 		} else {
 			readAndFilterPaths( paths, opt, function( err, result ) {
@@ -133,69 +127,6 @@ function readPattern( dir, options, callback ) {
 }
 
 // TODO dedupe all the stuff below
-
-function filterPaths( paths, options, callback ) {
-	var count = paths.length,
-		results = [];
-
-	paths.forEach( updatePath );
-
-	function decreaseCounter() {
-		count--;
-
-		if ( !count ) {
-			callback( null, results );
-		}
-	}
-
-	function updatePath( dir ) {
-		var count = 0;
-
-		function checkDone() {
-			count--;
-
-			if ( !count ) {
-				decreaseCounter();
-			}
-		}
-
-		fs.readdir( dir, function( err, files ) {
-			if ( err && options.stopOnErrors ) {
-				return callback( err );
-			}
-
-			if ( !files || !( count = files.length ) ) {
-				return callback( null, results );
-			}
-
-			files.forEach( function( file ) {
-				var name = file;
-
-				file = path.join( dir, file );
-
-				if (
-					( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
-					( options.ignore instanceof RegExp && options.ignore.test( file ) ) ||
-					( options.filter && !minimatch( name, options.filter ) )
-				) {
-					return checkDone();
-				}
-
-				fs.stat( file, function( err, stats ) {
-					if ( err && options.stopOnErrors ) {
-						return callback( err );
-					}
-
-					if ( !err && stats.isDirectory() ) {
-						results.push( file );
-					}
-
-					checkDone();
-				} );
-			} );
-		} );
-	}
-}
 
 function readAndFilterPaths( paths, options, callback ) {
 	var count = paths.length,
@@ -249,7 +180,7 @@ function readAndFilterPaths( paths, options, callback ) {
 						return callback( err );
 					}
 
-					if ( !err ) {
+					if ( !err && ( !options.dirOnly || stats.isDirectory() ) ) {
 						results.push( file );
 					}
 
@@ -260,7 +191,7 @@ function readAndFilterPaths( paths, options, callback ) {
 	}
 }
 
-// recursively read given paths
+// recursively read given paths and apply filtering on the final file list
 function readAndFilterFiles( paths, options, callback ) {
 	var count = paths.length,
 		results = [],
@@ -268,7 +199,9 @@ function readAndFilterFiles( paths, options, callback ) {
 
 	delete opt.filter;
 
-	paths.forEach( readAndFilterDirectory );
+	paths.forEach( function( dir ) {
+		readDir( dir, opt, decreaseCounter );
+	} );
 
 	function decreaseCounter( err, result ) {
 		if ( err && options.stopOnErrors ) {
@@ -290,10 +223,6 @@ function readAndFilterFiles( paths, options, callback ) {
 
 			callback( null, results.sort() );
 		}
-	}
-
-	function readAndFilterDirectory( dir ) {
-		readDir( dir, opt, decreaseCounter );
 	}
 }
 
@@ -342,7 +271,7 @@ function readDir( dir, options, callback ) {
 					return decreaseCounter();
 				}
 
-				if ( stats.isDirectory() ) {
+				if ( stats.isDirectory() && options.recursive ) {
 					readDir( file, options, function( err, files ) {
 						if ( err && options.stopOnErrors ) {
 							return callback( err );
