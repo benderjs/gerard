@@ -119,6 +119,47 @@ describe( 'Gerard', function() {
 				done();
 			} );
 		} );
+
+		it( 'should produce unique results only', function( done ) {
+			var expected = [
+				'test/dir1/a.js',
+				'test/dir1/b.js',
+				'test/dir1/dir3/c.js',
+				'test/dir1/dir3/d.js',
+				'test/dir1/dir3/dir2/dir4/h.js',
+				'test/dir1/dir3/dir2/e.js',
+				'test/dir1/dir3/dir2/f.js',
+				'test/dir1/dir3/dir2/g.js',
+				'test/dir1/dir3/test.txt',
+				'test/dir1/test.txt',
+				'test/dir2/a.js',
+				'test/dir2/b.js',
+				'test/dir2/dir3/c.js',
+				'test/dir2/dir3/d.js',
+				'test/dir2/dir3/dir2/dir4/h.js',
+				'test/dir2/dir3/dir2/e.js',
+				'test/dir2/dir3/dir2/f.js',
+				'test/dir2/dir3/dir2/g.js',
+				'test/dir2/dir3/test.txt',
+				'test/dir2/test.txt',
+				'test/dir3/c.js',
+				'test/dir3/d.js',
+				'test/dir3/dir2/dir4/h.js',
+				'test/dir3/dir2/e.js',
+				'test/dir3/dir2/f.js',
+				'test/dir3/dir2/g.js',
+				'test/dir3/test.txt',
+				'test/test.js'
+			];
+
+			gerard( [ dir1, testDir ], function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
 	} );
 
 	describe( 'with a pattern', function() {
@@ -270,6 +311,54 @@ describe( 'Gerard', function() {
 					expect( result ).to.be.an( 'object' );
 					expect( result ).to.contain.keys( [ 'name', 'dir', 'path', 'stats' ] );
 				} );
+
+				done();
+			} );
+		} );
+
+		it( 'should handle multiple patterns', function( done ) {
+			var expected = [
+				'test/dir1/dir3/c.js',
+				'test/dir1/dir3/d.js',
+				'test/dir2/dir3/c.js',
+				'test/dir2/dir3/d.js'
+			];
+
+			gerard( [
+				'test/dir1/*/*.js',
+				'test/dir2/*/*.js'
+			], function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
+		it( 'should produce unique results only', function( done ) {
+			var expected = [
+				'test/dir1/a.js',
+				'test/dir1/b.js',
+				'test/dir1/dir3/c.js',
+				'test/dir1/dir3/d.js',
+				'test/dir1/dir3/dir2/dir4/h.js',
+				'test/dir1/dir3/dir2/e.js',
+				'test/dir1/dir3/dir2/f.js',
+				'test/dir1/dir3/dir2/g.js',
+				'test/dir2/dir3/c.js',
+				'test/dir2/dir3/d.js',
+				'test/dir3/c.js',
+				'test/dir3/d.js'
+			];
+
+			gerard( [
+				'test/dir1/**/*.js',
+				'test/**/dir3/*.js'
+			], function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
 
 				done();
 			} );
