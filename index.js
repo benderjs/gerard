@@ -126,68 +126,32 @@ function readPattern( dir, options, callback ) {
 	readPart();
 }
 
-// TODO dedupe all the stuff below
-
+// read given paths and apply filters on the fly
 function readAndFilterPaths( paths, options, callback ) {
 	var count = paths.length,
-		results = [];
+		results = [],
+		opt = clone( options );
 
-	paths.forEach( readAndFilterPath );
+	opt.recursive = false;
 
-	function decreaseCounter() {
+	paths.forEach( function( pth ) {
+		readDir( pth, opt, decreaseCounter );
+	} );
+
+	function decreaseCounter( err, result ) {
+		if ( err && options.stopOnErrors ) {
+			return callback( err );
+		}
+
+		if ( !err ) {
+			results = results.concat( result );
+		}
+
 		count--;
 
 		if ( !count ) {
-			callback( null, results );
+			callback( null, results.sort() );
 		}
-	}
-
-	function readAndFilterPath( dir ) {
-		var count = 0;
-
-		function checkDone() {
-			count--;
-
-			if ( !count ) {
-				decreaseCounter();
-			}
-		}
-
-		fs.readdir( dir, function( err, files ) {
-			if ( err && options.stopOnErrors ) {
-				return callback( err );
-			}
-
-			if ( !files || !( count = files.length ) ) {
-				return callback( null, results );
-			}
-
-			files.forEach( function( file ) {
-				var name = file;
-
-				file = path.join( dir, file );
-
-				if (
-					( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
-					( options.ignore instanceof RegExp && options.ignore.test( file ) ) ||
-					( options.filter && !minimatch( name, options.filter ) )
-				) {
-					return checkDone();
-				}
-
-				fs.stat( file, function( err, stats ) {
-					if ( err && options.stopOnErrors ) {
-						return callback( err );
-					}
-
-					if ( !err && ( !options.dirOnly || stats.isDirectory() ) ) {
-						results.push( file );
-					}
-
-					checkDone();
-				} );
-			} );
-		} );
 	}
 }
 
@@ -253,7 +217,6 @@ function readDir( dir, options, callback ) {
 
 			file = path.join( dir, file );
 
-
 			if (
 				( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
 				( options.ignore instanceof RegExp && options.ignore.test( file ) ) ||
@@ -283,7 +246,7 @@ function readDir( dir, options, callback ) {
 
 						decreaseCounter();
 					} );
-				} else {
+				} else if ( !options.dirOnly || stats.isDirectory() ) {
 					if ( options.stats ) {
 						results.push( {
 							name: name,
@@ -295,6 +258,8 @@ function readDir( dir, options, callback ) {
 						results.push( file );
 					}
 
+					decreaseCounter();
+				} else {
 					decreaseCounter();
 				}
 			} );
