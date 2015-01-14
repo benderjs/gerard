@@ -70,7 +70,7 @@ function readPattern( dir, options, callback ) {
 		count--;
 
 		if ( !count ) {
-			callback( null, results.sort() );
+			callback( null, sortResults( results ) );
 		}
 	}
 
@@ -78,7 +78,7 @@ function readPattern( dir, options, callback ) {
 		var part = parts.shift();
 
 		if ( !part ) {
-			return callback( null, results.sort() );
+			return callback( null, sortResults( results ) );
 		}
 
 		// cloned options for further modifications
@@ -150,7 +150,7 @@ function readAndFilterPaths( paths, options, callback ) {
 		count--;
 
 		if ( !count ) {
-			callback( null, results.sort() );
+			callback( null, sortResults( results ) );
 		}
 	}
 }
@@ -191,7 +191,7 @@ function readAndFilterFiles( paths, options, callback ) {
 				} );
 			}
 
-			callback( null, results.sort() );
+			callback( null, sortResults( results ) );
 		}
 	}
 }
@@ -211,7 +211,7 @@ function readDir( dir, options, callback ) {
 		count--;
 
 		if ( !count ) {
-			callback( null, results.sort() );
+			callback( null, sortResults( results ) );
 		}
 	}
 
@@ -221,7 +221,7 @@ function readDir( dir, options, callback ) {
 		}
 
 		if ( !files || !( count = files.length ) ) {
-			return callback( null, results.sort() );
+			return callback( null, sortResults( results ) );
 		}
 
 		files.forEach( function( file ) {
@@ -304,4 +304,15 @@ function clone( obj ) {
 	}
 
 	return copy;
+}
+
+// sort method for the results array, supports sorting the results that include stats
+function sortResults( results ) {
+	if ( results[ 0 ] && typeof results[ 0 ] == 'object' ) {
+		return results.sort( function( a, b ) {
+			return a.path > b.path;
+		} );
+	} else {
+		return results.sort();
+	}
 }
