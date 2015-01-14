@@ -5,7 +5,7 @@
 
 'use strict';
 
-var minimatch = require( 'minimatch' ),
+var Minimatch = require( 'minimatch' ).Minimatch,
 	fs = require( 'graceful-fs' ),
 	path = require( 'path' );
 
@@ -159,7 +159,10 @@ function readAndFilterPaths( paths, options, callback ) {
 function readAndFilterFiles( paths, options, callback ) {
 	var count = paths.length,
 		results = [],
-		opt = clone( options );
+		opt = clone( options ),
+		filter = typeof options.filter == 'string' ?
+		new Minimatch( options.filter ) :
+		options.filter;
 
 	delete opt.filter;
 
@@ -179,9 +182,10 @@ function readAndFilterFiles( paths, options, callback ) {
 		count--;
 
 		if ( !count ) {
-			if ( options.filter ) {
+			if ( filter ) {
 				results = results.filter( function( file ) {
-					return minimatch( file, options.filter );
+					return filter instanceof Minimatch ? filter.match( file ) :
+						filter instanceof RegExp ? filter.test( file ) : true;
 				} );
 			}
 
@@ -193,7 +197,13 @@ function readAndFilterFiles( paths, options, callback ) {
 // recursively read a given directory
 function readDir( dir, options, callback ) {
 	var results = [],
-		count = 0;
+		count = 0,
+		ignore = typeof options.ignore == 'string' ?
+		new Minimatch( options.ignore ) :
+		options.ignore,
+		filter = typeof options.filter == 'string' ?
+		new Minimatch( options.filter ) :
+		options.filter;
 
 	function decreaseCounter() {
 		count--;
@@ -218,9 +228,10 @@ function readDir( dir, options, callback ) {
 			file = path.join( dir, file );
 
 			if (
-				( typeof options.ignore == 'string' && minimatch( file, options.ignore ) ) ||
-				( options.ignore instanceof RegExp && options.ignore.test( file ) ) ||
-				( options.filter && !minimatch( name, options.filter ) )
+				( ignore instanceof Minimatch && ignore.match( file ) ) ||
+				( ignore instanceof RegExp && ignore.test( file ) ) ||
+				( filter instanceof Minimatch && !filter.match( name ) ) ||
+				( filter instanceof RegExp && !filter.test( name ) )
 			) {
 				return decreaseCounter();
 			}
