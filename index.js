@@ -253,6 +253,8 @@ function readDir( dir, options, callback ) {
 		} );
 	}
 
+	dir = typeof dir == 'object' ? dir.path : dir;
+
 	fs.readdir( dir, function( err, files ) {
 		if ( err && options.stopOnErrors ) {
 			return callback( err );
@@ -329,7 +331,8 @@ function clone( obj ) {
 		copy = obj.map( function( value ) {
 			return clone( value );
 		} );
-	} else if ( typeof obj == 'object' && obj !== null ) {
+		// don't clone instances of Minimatch - just use a reference
+	} else if ( typeof obj == 'object' && !( obj instanceof Minimatch ) && obj !== null ) {
 		copy = {};
 
 		Object.getOwnPropertyNames( obj ).forEach( function( name ) {

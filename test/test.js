@@ -316,6 +316,26 @@ describe( 'Gerard', function() {
 			} );
 		} );
 
+		it( 'should handle the ignore option', function( done ) {
+			var expected = [ 'test/dir1/dir3/test.txt',
+				'test/dir1/test.txt',
+				'test/dir2/dir3/test.txt',
+				'test/dir2/test.txt',
+				'test/dir3/test.txt'
+			];
+
+			gerard( 'test/**', {
+				ignore: '**/*.js',
+				stats: false
+			}, function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
 		it( 'should handle multiple patterns', function( done ) {
 			var expected = [
 				'test/dir1/dir3/c.js',
