@@ -88,24 +88,7 @@ module.exports = gerard;
 function readPattern( dir, options, callback ) {
 	var parts = path.normalize( dir ).split( path.sep ),
 		results = [],
-		paths = [],
-		count = 0;
-
-	function checkDone( err, files ) {
-		if ( err && options.stopOnErrors ) {
-			return callback( err );
-		}
-
-		if ( !err ) {
-			results = results.concat( files );
-		}
-
-		count--;
-
-		if ( !count ) {
-			callback( null, sort( results, options.stats ) );
-		}
-	}
+		paths = [];
 
 	function readPart() {
 		var part = parts.shift();
@@ -119,7 +102,7 @@ function readPattern( dir, options, callback ) {
 		opt.filter = part;
 
 		// add the CWD if the path starts with a pattern
-		if ( isPattern( part ) && !paths.length ) {
+		if ( isPattern( part ) && parts.length && !paths.length ) {
 			paths.push( '.' );
 		}
 
@@ -198,6 +181,10 @@ function readAndFilterFiles( paths, options, callback ) {
 		options.filter;
 
 	delete opt.filter;
+
+	if ( !paths.length ) {
+		callback( null, [] );
+	}
 
 	paths.forEach( function( dir ) {
 		readDir( dir, opt, decreaseCounter );

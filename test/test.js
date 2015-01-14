@@ -383,5 +383,15 @@ describe( 'Gerard', function() {
 				done();
 			} );
 		} );
+
+		it( 'should return empty array if no matches', function( done ) {
+			gerard( 'test/**/foo/**', function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( results ).to.be.empty;
+
+				done();
+			} );
+		} );
 	} );
 } );
