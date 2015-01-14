@@ -82,6 +82,27 @@ describe( 'Gerard', function() {
 			} );
 		} );
 
+		it( 'should handle array of ignore patterns"', function( done ) {
+			var expected = [
+				'test/dir1/dir3/test.txt',
+				'test/dir1/test.txt',
+				'test/dir3/test.txt'
+			];
+
+			gerard( testDir, {
+				ignore: [
+					'**/*.js',
+					'**/dir2/**'
+				]
+			}, function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
 		it( 'should handle "stats" option', function( done ) {
 			gerard( dir1, {
 				stats: true

@@ -32,7 +32,17 @@ function gerard( path, options, callback ) {
 
 	// set the stopOnErrors option to default if no value specified
 	options.stopOnErrors = ( options.stopOnErrors === undefined ) ? true : options.stopOnErrors;
+	// set the recursive read flag to default (used internally)
 	options.recursive = ( options.recursive === undefined ) ? true : options.recursive;
+	// convert the ignore option to an array
+	options.ignore = Array.isArray( options.ignore ) ?
+		options.ignore :
+		options.ignore ? [ options.ignore ] : [];
+
+	// convert minimatch patterns to instances
+	options.ignore.forEach( function( ignore, i ) {
+		options.ignore[ i ] = typeof ignore == 'string' ? new Minimatch( ignore ) : ignore;
+	} );
 
 	// invalid argument type
 	if ( typeof path != 'string' || typeof callback != 'function' ) {
@@ -200,9 +210,6 @@ function readAndFilterFiles( paths, options, callback ) {
 function readDir( dir, options, callback ) {
 	var results = [],
 		count = 0,
-		ignore = typeof options.ignore == 'string' ?
-		new Minimatch( options.ignore ) :
-		options.ignore,
 		filter = typeof options.filter == 'string' ?
 		new Minimatch( options.filter ) :
 		options.filter;
@@ -213,6 +220,14 @@ function readDir( dir, options, callback ) {
 		if ( !count ) {
 			callback( null, sortResults( results ) );
 		}
+	}
+
+	function isIgnored( file ) {
+		return options.ignore.some( function( ignore ) {
+			return ( ignore instanceof Minimatch && ignore.match( file ) ) ||
+				( ignore instanceof RegExp && ignore.test( file ) ) ||
+				( typeof ignore == 'function' && ignore( file ) );
+		} );
 	}
 
 	fs.readdir( dir, function( err, files ) {
@@ -229,9 +244,7 @@ function readDir( dir, options, callback ) {
 
 			file = path.join( dir, file );
 
-			if (
-				( ignore instanceof Minimatch && ignore.match( file ) ) ||
-				( ignore instanceof RegExp && ignore.test( file ) ) ||
+			if ( isIgnored( file ) ||
 				( filter instanceof Minimatch && !filter.match( name ) ) ||
 				( filter instanceof RegExp && !filter.test( name ) )
 			) {
