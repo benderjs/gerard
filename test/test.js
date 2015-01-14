@@ -193,7 +193,7 @@ describe( 'Gerard', function() {
 			} );
 		} );
 
-		it( 'should handle a pattern test/*/dir3/*.js', function( done ) {
+		it( 'should handle test/*/dir3/*.js', function( done ) {
 			var expected = [
 				'test/dir1/dir3/c.js',
 				'test/dir1/dir3/d.js',
@@ -210,7 +210,7 @@ describe( 'Gerard', function() {
 			} );
 		} );
 
-		it( 'should handle a pattern test/*/dir3/test.txt', function( done ) {
+		it( 'should handle test/*/dir3/test.txt', function( done ) {
 			var expected = [
 				'test/dir1/dir3/test.txt',
 				'test/dir2/dir3/test.txt'
@@ -225,13 +225,30 @@ describe( 'Gerard', function() {
 			} );
 		} );
 
-		it( 'should handle a pattern */*.js', function( done ) {
+		it( 'should handle */*.js', function( done ) {
 			var expected = [ 'test/test.js' ];
 
 			gerard( '*/*.js', function( err, results ) {
 				expect( err ).to.not.exist;
 				expect( results ).to.be.an( 'array' );
 				expect( normalize( results ) ).to.deep.equal( normalize( expected ) );
+
+				done();
+			} );
+		} );
+
+		it( 'should handle the stats option', function( done ) {
+			gerard( 'test/**/*.txt', {
+				stats: true
+			}, function( err, results ) {
+				expect( err ).to.not.exist;
+				expect( results ).to.be.an( 'array' );
+				expect( results ).to.have.length( 5 );
+
+				results.forEach( function( result ) {
+					expect( result ).to.be.an( 'object' );
+					expect( result ).to.contain.keys( [ 'name', 'dir', 'path', 'stats' ] );
+				} );
 
 				done();
 			} );

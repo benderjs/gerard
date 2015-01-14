@@ -184,6 +184,8 @@ function readAndFilterFiles( paths, options, callback ) {
 		if ( !count ) {
 			if ( filter ) {
 				results = results.filter( function( file ) {
+					file = typeof file == 'string' ? file : file.path;
+
 					return filter instanceof Minimatch ? filter.match( file ) :
 						filter instanceof RegExp ? filter.test( file ) : true;
 				} );
