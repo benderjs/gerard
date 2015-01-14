@@ -45,8 +45,8 @@ function gerard( path, options, callback ) {
 		options.ignore ? [ options.ignore ] : [];
 
 	// convert minimatch patterns to instances
-	options.ignore.forEach( function( ignore, i ) {
-		options.ignore[ i ] = typeof ignore == 'string' ? new Minimatch( ignore ) : ignore;
+	options.ignore = options.ignore.map( function( ignore, i ) {
+		return typeof ignore == 'string' ? new Minimatch( ignore ) : ignore;
 	} );
 
 	path = Array.isArray( path ) ? path : [ path ];
